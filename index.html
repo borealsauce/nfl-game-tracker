@@ -26,6 +26,7 @@ th{color:var(--mut);font-size:13px;font-weight:600}tr.hot td{background:rgba(255
 .rz{position:absolute;right:0;top:0;bottom:0;width:7px;cursor:col-resize;user-select:none}.rz:hover{background:var(--acc)}
 .pos{color:var(--mut);font-size:13px;font-weight:600;margin-left:4px}
 .note{color:var(--mut);font-size:12px;margin:10px 4px}
+table.big td{font-size:28px;font-weight:800;padding:16px 8px;color:#fff;text-align:left}table.big th{text-align:left;font-size:15px}table.big td.bn{color:var(--yel);font-size:34px;font-weight:900}table.big td.bp{color:#7fd1ff}table.big th:first-child,table.big td:first-child{width:22%}tr.hot td{background:rgba(255,207,62,.22)!important}@media(max-width:760px){table.big td{font-size:24px}table.big td.bn{font-size:30px}}
 </style></head><body>
 <header><button id="back" hidden onclick="go(null)">‹ Games</button><h1>🏈 NFL Game Tracker</h1><span id="upd" style="color:var(--mut);font-size:12px;white-space:nowrap"></span><select id="team" title="Jump to team's game"></select></header>
 <main id="app"><div class="note">Loading…</div></main>
@@ -73,8 +74,6 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
  const mid=state=='in'?'<span class="live">● LIVE</span><br><b style="font-size:26px;color:var(--tx)">'+esc(st.shortDetail||st.detail)+'</b>':state=='pre'?'Kickoff<br>'+pt(comp.date):'<b style="font-size:24px;color:var(--tx)">'+esc(st.detail)+'</b>';
  let html='<div class="sb">'+tmHTML(a)+'<div class="mid">'+mid+'</div>'+tmHTML(h)+'</div>';
  if(state=='in'){const posT=cs.find(c=>c.team.id==s.possession);html+='<div class="sit">'+(posT?'🏈 '+esc(posT.team.abbreviation)+' ball · ':'')+(esc(sitTxt(s))||esc(s.downDistanceText||'—'))+(s.isRedZone?' · <span style="color:#ff5a5a">Red zone</span>':'')+'<small>'+esc((s.lastPlay&&s.lastPlay.text)||'')+'</small></div>'}
- html+='<div class="lp" id="fast" hidden></div>';
- if(recent.length){html+='<div class="lp"><b>Last play'+(recent.length>1?'s':'')+' — who was involved</b>';recent.forEach((p,i)=>{html+='<div class="note" style="margin:8px 0 0;'+(i?'':'color:var(--tx);font-size:14px')+'">Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+' · '+esc(p.text)+'</div><div class="chips">'+p.participants.filter((x,i,A)=>A.findIndex(y=>y.athlete.id==x.athlete.id)==i&&SK(pos[x.athlete.id])).map(x=>'<span class="chip">'+who(x.athlete.jersey,x.athlete.shortName||x.athlete.displayName,(R[x.athlete.id]&&R[x.athlete.id][0])||(x.athlete.position&&x.athlete.position.abbreviation))+'</span>').join('')+'</div>'});html+='</div>'}
  const ballT=state=='in'&&cs.find(c=>c.team.id==s.possession),show=ballT?[ballT]:[a,h];
  html+='<div class="cols"'+(ballT?' style="grid-template-columns:1fr"':'')+'>';
  for(const t of show){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan" data-t="'+t.team.id+'"><div style="font-weight:800;font-size:18px">'+(ballT?'🏈 On offense: ':'')+esc(t.team.displayName)+'</div>';
@@ -86,10 +85,10 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
   c=cat('receiving');c.athletes.forEach(x=>{const o=get(x.athlete.id,x.athlete);o.rec=+V(c,x,'REC')||0;o.cy=+V(c,x,'YDS')||0;o.td+=+V(c,x,'TD')||0});
   plays.forEach(p=>(p.participants||[]).forEach(x=>{const id=x.athlete.id;if(R[id]&&R[id][2]==t.team.id)get(id,x.athlete)}));
   const rows=Object.values(P).filter(o=>SK(o.p)).sort((x,y)=>(RANK[x.p]-RANK[y.p])||((y.py+y.ry+y.cy)-(x.py+x.ry+x.cy)));
-  html+='<table data-k="'+t.team.id+'sk"><thead><tr><th>Player</th><th>C/ATT</th><th>PASS YDS</th><th>CAR</th><th>RUSH YDS</th><th>REC</th><th>REC YDS</th><th>TD</th></tr></thead><tbody>'+
-   (rows.length?rows.map(o=>'<tr class="'+(hot.has(o.id)?'hot':'')+'"><td data-v="'+(RANK[o.p]*1000+ +o.j)+'" title="'+esc(o.n)+'">'+who(o.j,o.n,o.p)+'</td><td>'+esc(o.c||'–')+'</td><td>'+o.py+'</td><td>'+o.car+'</td><td>'+o.ry+'</td><td>'+o.rec+'</td><td>'+o.cy+'</td><td style="color:var(--grn)">'+o.td+'</td></tr>').join(''):'<tr><td colspan="8" style="text-align:center;color:var(--mut)">No skill players yet</td></tr>')+'</tbody></table>';
+  html+='<table class="big" data-k="'+t.team.id+'sk"><thead><tr><th style="width:22%">#</th><th>Player</th><th style="width:22%">Pos</th></tr></thead><tbody>'+
+   (rows.length?rows.map(o=>'<tr data-id="'+o.id+'" class="'+(hot.has(o.id)?'hot':'')+'"><td class="bn" data-v="'+(+o.j||0)+'">#'+esc(o.j||'?')+'</td><td>'+esc(o.n)+'</td><td class="bp" data-v="'+RANK[o.p]+'">'+esc(o.p)+'</td></tr>').join(''):'<tr><td colspan="3" style="text-align:center;color:var(--mut)">No players yet</td></tr>')+'</tbody></table>';
   const seen=rows;
-  html+='<div class="note">'+seen.length+' TD-eligible players (QB/RB/FB/WR/TE) who have appeared</div></div>'}
+  html+='<div class="note">'+seen.length+' TD-eligible players · yellow = in the last play</div></div>'}
  html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows TD-eligible skill players (QB, RB, FB, WR, TE) who have a stat or appear in the play-by-play, plus the players named in the last plays (highlighted in yellow). '+(state=='post'?'Final.':'Refreshes every 15s.')+' Data: ESPN.</div>';
  const keep=[...app.querySelectorAll('table')].map(t=>{const th=t.querySelector('th[data-sdir]');return th?[t.dataset.k,th.cellIndex,th.dataset.sdir]:null}).filter(Boolean);
  app.innerHTML=html;keep.forEach(([k,ci,dir])=>{const t=app.querySelector('table[data-k="'+k+'"]');if(!t)return;const th=t.rows[0].cells[ci];th.click();if(dir==='desc')th.click()});
@@ -101,10 +100,12 @@ async function fastLoop(id,R,cs){clearTimeout(ftimer);if(params().get('game')!==
  try{const s=await j(CORE+id+'/competitions/'+id+'/situation');const ref=s.lastPlay&&s.lastPlay.$ref,pid=ref&&(ref.match(/plays\/(\d+)/)||[])[1];
   const tid=s.team&&(s.team.$ref.match(/teams\/(\d+)/)||[])[1];
   if(pid&&fLast[id]!==pid){fLast[id]=pid;const p=await j(hs(ref).split('?')[0]);
-   const el=document.getElementById('fast');if(el){const T=cs.find(c=>c.team.id==tid);
-    const ppl=(p.participants||[]).map(x=>(x.athlete&&x.athlete.$ref.match(/athletes\/(\d+)/)||[])[1]).filter((v,i,A)=>v&&A.indexOf(v)==i&&R[v]&&SK(R[v][0]));
-    el.innerHTML='<b style="color:var(--yel)">⚡ Latest (fast feed)</b> · '+esc(cs.find(c=>c.homeAway=='away').team.abbreviation)+' '+p.awayScore+' – '+p.homeScore+' '+esc(cs.find(c=>c.homeAway=='home').team.abbreviation)+' · Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+'<div style="font-size:20px;font-weight:700;margin-top:4px">'+(T?'🏈 '+esc(T.team.abbreviation)+' ball · ':'')+esc(s.downDistanceText||'')+'</div><div class="note" style="color:var(--tx);font-size:14px">'+esc(p.text)+'</div>'+(ppl.length?'<div class="chips">'+ppl.map(v=>'<span class="chip">'+who(R[v][1],R[v][3],R[v][0])+'</span>').join('')+'</div>':'');
-    el.hidden=false;
+   const T=cs.find(c=>c.team.id==tid),sit=document.querySelector('.sit');
+   if(sit)sit.innerHTML=(T?'🏈 '+esc(T.team.abbreviation)+' ball · ':'')+esc(s.downDistanceText||'')+(s.isRedZone?' · <span style="color:#ff5a5a">Red zone</span>':'')+'<small>Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+' · '+esc(p.text)+'</small>';
+   const sc=document.querySelectorAll('.sb .tm .s');if(sc.length==2&&p.awayScore!=null){sc[0].textContent=p.awayScore;sc[1].textContent=p.homeScore}
+   const ppl=new Set((p.participants||[]).map(x=>(x.athlete&&x.athlete.$ref.match(/athletes\/(\d+)/)||[])[1]));
+   if(ppl.size)document.querySelectorAll('table.big tr[data-id]').forEach(r=>r.classList.toggle('hot',ppl.has(r.dataset.id)));
+   {
     const cur=(document.querySelector('.pan')||{}).dataset;if(tid&&cur&&cur.t&&cur.t!=tid){fLast[id]=null;return gameView(id)}}}}catch(e){}
  ftimer=setTimeout(()=>fastLoop(id,R,cs),5000)}
 function addRz(){app.querySelectorAll('table').forEach(t=>{[...t.rows[0].cells].forEach((th,i)=>{const key=t.dataset.k+':'+i;if(W[key])th.style.width=W[key]+'px';const r=document.createElement('span');r.className='rz';th.appendChild(r);
