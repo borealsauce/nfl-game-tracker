@@ -27,6 +27,8 @@ th{color:var(--mut);font-size:13px;font-weight:600}tr.hot td{background:rgba(255
 .pos{color:var(--mut);font-size:13px;font-weight:600;margin-left:4px}
 .note{color:var(--mut);font-size:12px;margin:10px 4px}
 table.big td{font-size:28px;font-weight:800;padding:16px 8px;color:#fff;text-align:left}table.big th{text-align:left;font-size:15px}table.big td.bn{color:var(--yel);font-size:34px;font-weight:900}table.big td.bp{color:#7fd1ff}table.big th:first-child,table.big td:first-child{width:16%}table.big td.by{text-align:right;font-size:32px;font-weight:900}table.big th:nth-child(n+4){text-align:right}tr.hot td{background:rgba(255,207,62,.22)!important}@media(max-width:760px){table.big td{font-size:24px}table.big td.bn{font-size:30px}}
+.ban{background:#000;border:3px solid var(--yel);border-radius:14px;padding:14px;margin-bottom:8px;text-align:center}.bt{display:flex;align-items:center;justify-content:center;gap:10px;font-size:28px;font-weight:900;color:#fff;flex-wrap:wrap}.bt img{width:48px;height:48px}.upd{font-size:15px;color:var(--yel);font-weight:600}.bl{font-size:34px;font-weight:900;color:var(--yel);margin-top:6px}.bl b{color:#fff}.mt{font-size:18px;color:var(--mut);font-weight:600}.bd{font-size:28px;font-weight:800;color:#fff;margin-top:4px}
+.fld{position:relative;height:74px;background:#1f6b2e;border-radius:10px;margin-bottom:12px;overflow:hidden}.ez{position:absolute;top:0;bottom:0;width:8.33%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:12px;writing-mode:vertical-rl}.yd{position:absolute;top:0;bottom:0;border-left:2px solid rgba(255,255,255,.55)}.yd span{position:absolute;bottom:2px;left:-9px;color:#fff;font-size:12px;font-weight:700}.los{position:absolute;top:0;bottom:0;border-left:4px solid #3ea6ff}.fd{position:absolute;top:0;bottom:0;border-left:4px solid #ffcf3e}.arr{position:absolute;top:40%;font-size:22px;white-space:nowrap}
 </style></head><body>
 <header><button id="back" hidden onclick="go(null)">‹ Games</button><h1>🏈 NFL Game Tracker</h1><span id="upd" style="color:var(--mut);font-size:12px;white-space:nowrap"></span><select id="team" title="Jump to team's game"></select></header>
 <main id="app"><div class="note">Loading…</div></main>
@@ -65,7 +67,7 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
  if(params().get('game')!==id)return;clearTimeout(timer);
  const comp=d.header.competitions[0],st=comp.status.type,state=st.state,cs=comp.competitors,a=cs.find(x=>x.homeAway=='away'),h=cs.find(x=>x.homeAway=='home');
  const s=(sbE&&sbE.competitions[0].situation)||{};
- if(state=='in')try{const cx=await j(CORE+id+'/competitions/'+id+'/situation'),ct=cx.team&&(cx.team.$ref.match(/teams\/(\d+)/)||[])[1];if(ct){s.possession=ct;if(cx.downDistanceText)s.downDistanceText=cx.downDistanceText}}catch(e){}const R=await roster(id,cs.map(c=>c.team.id));
+ window._cx=null;if(state=='in')try{const cx=await j(CORE+id+'/competitions/'+id+'/situation');window._cx=cx;const ct=cx.team&&(cx.team.$ref.match(/teams\/(\d+)/)||[])[1];if(ct){s.possession=ct;if(cx.downDistanceText)s.downDistanceText=cx.downDistanceText}}catch(e){}const R=await roster(id,cs.map(c=>c.team.id));
  // positions + jerseys from play participants; last plays
  const dr=d.drives||{},plays=[].concat(...(dr.previous||[]).map(x=>x.plays||[]),(dr.current&&dr.current.plays)||[]);
  const pos={},jer={};plays.forEach(p=>(p.participants||[]).forEach(x=>{const t=x.athlete;if(t.position)pos[t.id]=t.position.abbreviation;if(R[t.id]&&R[t.id][0])pos[t.id]=R[t.id][0];if(t.jersey)jer[t.id]=t.jersey}));
@@ -74,7 +76,7 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
  const tmHTML=t=>'<div class="tm"><img src="'+(t.team.logos?t.team.logos[0].href:t.team.logo)+'" alt=""><div><div style="font-weight:700">'+esc(t.team.abbreviation)+(s.possession==t.team.id&&state=='in'?' <span class="ball">🏈</span>':'')+'</div><div class="s">'+(state=='pre'?'–':esc(t.score))+'</div></div></div>';
  const mid=state=='in'?'<span class="live">● LIVE</span><br><b style="font-size:26px;color:var(--tx)">'+esc(st.shortDetail||st.detail)+'</b>':state=='pre'?'Kickoff<br>'+pt(comp.date):'<b style="font-size:24px;color:var(--tx)">'+esc(st.detail)+'</b>';
  let html='<div class="sb">'+tmHTML(a)+'<div class="mid">'+mid+'</div>'+tmHTML(h)+'</div>';
- if(state=='in'){const posT=cs.find(c=>c.team.id==s.possession);html+='<div class="sit">'+(posT?'🏈 '+esc(posT.team.abbreviation)+' ball · ':'')+(esc(sitTxt(s))||esc(s.downDistanceText||'—'))+(s.isRedZone?' · <span style="color:#ff5a5a">Red zone</span>':'')+'<small>'+esc((s.lastPlay&&s.lastPlay.text)||'')+'</small></div>'}
+ if(state=='in'){const S0=window._cx?coreS(window._cx):(s.possession?{tid:s.possession,yardLine:s.yardLine,down:s.down,dist:s.distance,dd:s.downDistanceText}:null);html+='<div id="ball">'+ballHTML(id,cs,S0)+'</div>'}
  const ballT=state=='in'&&cs.find(c=>c.team.id==s.possession),show=ballT?[ballT]:[a,h];
  html+='<div class="cols"'+(ballT?' style="grid-template-columns:1fr"':'')+'>';
  for(const t of show){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan" data-t="'+t.team.id+'"><div style="font-weight:800;font-size:18px">'+(ballT?'🏈 On offense: ':'')+esc(t.team.displayName)+'</div>';
@@ -99,16 +101,31 @@ const CORE='https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/even
 const hs=u=>u.replace(/^http:/,'https:');
 async function fastLoop(id,R,cs){clearTimeout(ftimer);if(params().get('game')!==id)return;
  try{const s=await j(CORE+id+'/competitions/'+id+'/situation');const ref=s.lastPlay&&s.lastPlay.$ref,pid=ref&&(ref.match(/plays\/(\d+)/)||[])[1];
-  const tid=s.team&&(s.team.$ref.match(/teams\/(\d+)/)||[])[1];
+  const tid=s.team&&(s.team.$ref.match(/teams\/(\d+)/)||[])[1];const bEl=document.getElementById('ball');if(bEl)bEl.innerHTML=ballHTML(id,cs,coreS(s));
   if(pid&&fLast[id]!==pid){fLast[id]=pid;const p=await j(hs(ref).split('?')[0]);
-   const T=cs.find(c=>c.team.id==tid),sit=document.querySelector('.sit');
-   if(sit)sit.innerHTML=(T?'🏈 '+esc(T.team.abbreviation)+' ball · ':'')+esc(s.downDistanceText||'')+(s.isRedZone?' · <span style="color:#ff5a5a">Red zone</span>':'')+'<small>Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+' · '+esc(p.text)+'</small>';
+
    const sc=document.querySelectorAll('.sb .tm .s');if(sc.length==2&&p.awayScore!=null){sc[0].textContent=p.awayScore;sc[1].textContent=p.homeScore}
    const ppl=new Set((p.participants||[]).map(x=>(x.athlete&&x.athlete.$ref.match(/athletes\/(\d+)/)||[])[1]));
    if(ppl.size)document.querySelectorAll('table.big tr[data-id]').forEach(r=>r.classList.toggle('hot',ppl.has(r.dataset.id)));
    {
     const cur=(document.querySelector('.pan')||{}).dataset;if(tid&&cur&&cur.t&&cur.t!=tid){fLast[id]=null;return gameView(id)}}}}catch(e){}
  ftimer=setTimeout(()=>fastLoop(id,R,cs),5000)}
+
+const LK={};
+function ballHTML(id,cs,S){const H=cs.find(c=>c.homeAway=='home'),A=cs.find(c=>c.homeAway=='away');
+ if(S&&S.yardLine!=null&&S.tid)LK[id]=S;const k=LK[id];const T=k&&cs.find(c=>c.team.id==k.tid),known=S&&S.tid&&T;
+ const col=c=>'#'+((c.team.color&&c.team.color!='000000')?c.team.color:'334');
+ if(!k)return '<div class="ban"><div class="bt">Possession: updating…</div></div>';
+ const yl=k.yardLine,side=yl<50?H.team.abbreviation+' '+yl:yl>50?A.team.abbreviation+' '+(100-yl):'50',home=T.homeAway=='home',own=home?yl:100-yl;
+ const ownTxt=own==50?'Midfield':own<50?'Own '+own:'Opp '+(100-own);
+ const dd=k.dd||'',fd=k.dist>0&&k.down>0?(home?yl+k.dist:yl-k.dist):null;
+ const X=v=>(8.33+v*0.8334).toFixed(2)+'%';
+ let f='<div class="fld"><div class="ez" style="left:0;background:'+col(H)+'">'+esc(H.team.abbreviation)+'</div><div class="ez" style="right:0;background:'+col(A)+'">'+esc(A.team.abbreviation)+'</div>';
+ for(let v=10;v<100;v+=10)f+='<div class="yd" style="left:'+X(v)+'"><span>'+(v>50?100-v:v)+'</span></div>';
+ if(fd!=null&&fd>0&&fd<100)f+='<div class="fd" style="left:'+X(fd)+'"></div>';
+ f+='<div class="los" style="left:'+X(yl)+'"></div><div class="arr" style="left:'+X(yl)+';transform:translate('+(home?'4px':'calc(-100% - 4px)')+',-50%)">'+(home?'🏈➜':'⬅🏈')+'</div></div>';
+ return '<div class="ban" style="border-color:'+col(T)+'"><div class="bt"><img src="'+(T.team.logos?T.team.logos[0].href:T.team.logo)+'" alt="">🏈 '+esc(T.team.displayName)+(known?'':' <span class="upd">Possession: updating… (last known)</span>')+'</div><div class="bl">BALL ON: <b>'+esc(side)+'</b> <span class="mt">('+ownTxt+')</span></div>'+(dd?'<div class="bd">'+esc(dd)+'</div>':'')+'</div>'+f}
+function coreS(cx){const tid=cx.team&&(cx.team.$ref.match(/teams\/(\d+)/)||[])[1];return {tid,yardLine:cx.yardLine,down:cx.down,dist:cx.distance,dd:cx.downDistanceText}}
 function addRz(){app.querySelectorAll('table').forEach(t=>{[...t.rows[0].cells].forEach((th,i)=>{const key=t.dataset.k+':'+i;if(W[key])th.style.width=W[key]+'px';const r=document.createElement('span');r.className='rz';th.appendChild(r);
  r.addEventListener('click',e=>e.stopPropagation());r.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const x0=e.clientX,w0=th.offsetWidth;r.setPointerCapture(e.pointerId);
  const mv=ev=>{const w=Math.max(40,w0+ev.clientX-x0);th.style.width=w+'px';W[key]=w};r.addEventListener('pointermove',mv);r.addEventListener('pointerup',()=>r.removeEventListener('pointermove',mv),{once:true})})})})}
