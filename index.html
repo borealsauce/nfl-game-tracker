@@ -48,7 +48,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const params=()=>new URLSearchParams(location.search);
 function go(id){const u=new URL(location);u.search=id?'?game='+id:'';history.pushState(null,'',u);route()}
 addEventListener('popstate',route);addEventListener('DOMContentLoaded',route);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)route()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(timer);clearTimeout(ftimer)}else route()});addEventListener('focus',()=>{if(!document.hidden)route()});
 function upd(){document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',second:'2-digit'})+' PT'}
 async function j(u){const r=await fetch(u+(u.includes('?')?'&':'?')+'_='+Date.now());if(!r.ok)throw Error(r.status);return r.json()}
 async function loadSB(){const d=await j(SB);events=d.events||[];
@@ -63,14 +63,14 @@ function card(e){const c=e.competitions[0],st=e.status.type,s=c.situation||{},a=
  const row=t=>'<div class="tr"><img src="'+t.team.logo+'" alt=""><span class="n">'+esc(t.team.displayName)+(st.state=='in'&&s.possession==t.team.id?' <span class="ball">🏈</span>':'')+'</span><span class="s">'+(st.state=='pre'?'':t.score)+'</span></div>';
  const x=st.state=='in'?'<span class="live">● LIVE</span> '+esc(st.detail)+(sitTxt(s)?' · '+esc(sitTxt(s)):''):st.state=='pre'?'Kickoff '+pt(e.date):esc(st.detail);
  return '<div class="gc" onclick="go(\''+e.id+'\')">'+row(a)+row(h)+'<div class="st">'+x+'</div></div>'}
-async function listView(){try{await loadSB()}catch(e){}
+async function listView(){if(document.hidden)return;try{await loadSB()}catch(e){}
  const f=s=>events.filter(e=>e.status.type.state==s),L=f('in'),U=f('pre'),F=f('post');
  let h='<h2>Live now ('+L.length+')</h2>'+(L.length?'<div class="grid">'+L.map(card).join('')+'</div>':'<div class="note">No games live right now.</div>');
  if(U.length)h+='<h2>Upcoming</h2><div class="grid">'+U.map(card).join('')+'</div>';if(F.length)h+='<h2>Final</h2><div class="grid">'+F.map(card).join('')+'</div>';
- app.innerHTML=h+'<div class="note">Refreshes every 15s · data: ESPN</div>';upd();timer=setTimeout(listView,15000)}
+ app.innerHTML=h+'<div class="note">Refreshes every 5s · live plays every 3s · data: ESPN</div>';upd();timer=setTimeout(listView,5000)}
 const CATS=[['passing','Passing',['C/ATT','YDS','TD','INT','SACKS']],['rushing','Rushing',['CAR','YDS','AVG','TD','LONG']],['receiving','Receiving',['REC','YDS','TD','LONG','TGTS']],['defensive','Defense',['TOT','SOLO','SACKS','TFL','PD']],['interceptions','Interceptions',['INT','YDS','TD']],['kicking','Kicking',['FG','XP','PTS']],['punting','Punting',['NO','YDS','AVG']],['kickReturns','Kick returns',['NO','YDS','LONG']],['puntReturns','Punt returns',['NO','YDS','LONG']]];
 const who=(n,name,pos)=>'<span class="num">#'+esc(n||'?')+'</span>'+esc(name)+(pos?'<span class="pos">'+esc(pos)+'</span>':'');
-async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB().catch(()=>{})]);sbE=events.find(e=>e.id==id)}catch(e){app.innerHTML='<div class="note">Could not load game: '+e+'</div>';timer=setTimeout(()=>gameView(id),15000);return}
+async function gameView(id){if(document.hidden)return;let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB().catch(()=>{})]);sbE=events.find(e=>e.id==id)}catch(e){app.innerHTML='<div class="note">Could not load game: '+e+'</div>';timer=setTimeout(()=>gameView(id),15000);return}
  if(params().get('game')!==id)return;clearTimeout(timer);
  const comp=d.header.competitions[0],st=comp.status.type,state=st.state,cs=comp.competitors,a=cs.find(x=>x.homeAway=='away'),h=cs.find(x=>x.homeAway=='home');
  const s=(sbE&&sbE.competitions[0].situation)||{};
@@ -103,11 +103,11 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
  html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows TD-eligible skill players (QB, RB, FB, WR, TE) who have appeared in this game (box score or play-by-play). '+(state=='post'?'Final.':'Play, score and down update every 5s from ESPN\'s fastest feed; list every 10s.')+' Data: ESPN.</div>';
  const keep=[...app.querySelectorAll('table')].map(t=>{const th=t.querySelector('th[data-sdir]');return th?[t.dataset.k,th.cellIndex,th.dataset.sdir]:null}).filter(Boolean);
  app.innerHTML=html;keep.forEach(([k,ci,dir])=>{const t=app.querySelector('table[data-k="'+k+'"]');if(!t)return;const th=t.rows[0].cells[ci];th.click();if(dir==='desc')th.click()});
- addRz();upd();if(state!='post')timer=setTimeout(()=>gameView(id),10000);if(state=='in'){fLast[id]=null;fastLoop(id,R,cs)}}
+ addRz();upd();if(state!='post')timer=setTimeout(()=>gameView(id),5000);if(state=='in'){fLast[id]=null;fastLoop(id,R,cs)}}
 
 const CORE='https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/events/';let ftimer,fLast={};
 const hs=u=>u.replace(/^http:/,'https:');
-async function fastLoop(id,R,cs){clearTimeout(ftimer);if(params().get('game')!==id)return;
+async function fastLoop(id,R,cs){if(document.hidden)return;clearTimeout(ftimer);if(params().get('game')!==id)return;
  try{const s=await j(CORE+id+'/competitions/'+id+'/situation');const ref=s.lastPlay&&s.lastPlay.$ref,pid=ref&&(ref.match(/plays\/(\d+)/)||[])[1];
   const tid=s.team&&(s.team.$ref.match(/teams\/(\d+)/)||[])[1];const bEl=document.getElementById('ball');if(bEl)bEl.innerHTML=ballHTML(id,cs,coreS(s));
   if(pid&&fLast[id]!==pid){fLast[id]=pid;const p=await j(hs(ref).split('?')[0]);
@@ -117,7 +117,7 @@ async function fastLoop(id,R,cs){clearTimeout(ftimer);if(params().get('game')!==
    if(ppl.size)document.querySelectorAll('table.big tr[data-id]').forEach(r=>0);
    {
     const cur=(document.querySelector('.pan')||{}).dataset;if(tid&&cur&&cur.t&&cur.t!=tid){fLast[id]=null;return gameView(id)}}}}catch(e){}
- ftimer=setTimeout(()=>fastLoop(id,R,cs),5000)}
+ ftimer=setTimeout(()=>fastLoop(id,R,cs),3000)}
 
 const LK={};
 function ballHTML(id,cs,S){const H=cs.find(c=>c.homeAway=='home'),A=cs.find(c=>c.homeAway=='away');
