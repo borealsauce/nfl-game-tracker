@@ -70,8 +70,11 @@ async function listView(){if(document.hidden)return;try{await loadSB()}catch(e){
  app.innerHTML=h+'<div class="note">Refreshes every 5s · live plays every 3s · data: ESPN</div>';upd();timer=setTimeout(listView,5000)}
 const CATS=[['passing','Passing',['C/ATT','YDS','TD','INT','SACKS']],['rushing','Rushing',['CAR','YDS','AVG','TD','LONG']],['receiving','Receiving',['REC','YDS','TD','LONG','TGTS']],['defensive','Defense',['TOT','SOLO','SACKS','TFL','PD']],['interceptions','Interceptions',['INT','YDS','TD']],['kicking','Kicking',['FG','XP','PTS']],['punting','Punting',['NO','YDS','AVG']],['kickReturns','Kick returns',['NO','YDS','LONG']],['puntReturns','Punt returns',['NO','YDS','LONG']]];
 const who=(n,name,pos)=>'<span class="num">#'+esc(n||'?')+'</span>'+esc(name)+(pos?'<span class="pos">'+esc(pos)+'</span>':'');
+let FD=null,FDt=0;const nrm=x=>(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(jr|sr|ii|iii|iv)\b/g,'').replace(/[^a-z]/g,'');
+async function loadFD(){if(FD&&Date.now()-FDt<60000)return;try{FD=(await j('fanduel.json')).games||{};FDt=Date.now()}catch(_){if(!FD)FD={}}}
+function fdFor(a,h){if(!FD)return null;const k=Object.keys(FD).find(k=>{const[x,y]=k.split(' @ ');return x.endsWith(a.team.name)&&y.endsWith(h.team.name)});const g=k&&FD[k];if(!g||!Object.keys(g).length)return null;const m={};for(const n in g)m[nrm(n)]=1;return m}
 async function gameView(id){if(document.hidden)return;let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB().catch(()=>{})]);sbE=events.find(e=>e.id==id)}catch(e){app.innerHTML='<div class="note">Could not load game: '+e+'</div>';timer=setTimeout(()=>gameView(id),15000);return}
- if(params().get('game')!==id)return;clearTimeout(timer);
+ await loadFD();if(params().get('game')!==id)return;clearTimeout(timer);
  const comp=d.header.competitions[0],st=comp.status.type,state=st.state,cs=comp.competitors,a=cs.find(x=>x.homeAway=='away'),h=cs.find(x=>x.homeAway=='home');
  const s=(sbE&&sbE.competitions[0].situation)||{};
  window._cx=null;if(state=='in')try{const cx=await j(CORE+id+'/competitions/'+id+'/situation');window._cx=cx;const ct=cx.team&&(cx.team.$ref.match(/teams\/(\d+)/)||[])[1];if(ct){s.possession=ct;if(cx.downDistanceText)s.downDistanceText=cx.downDistanceText}}catch(e){}const R=await roster(id,cs.map(c=>c.team.id));
@@ -95,11 +98,11 @@ async function gameView(id){if(document.hidden)return;let d,sbE;try{[d]=await Pr
   c=cat('rushing');c.athletes.forEach(x=>{const o=get(x.athlete.id,x.athlete);o.car=+V(c,x,'CAR')||0;o.inR=1;o.ry=+V(c,x,'YDS')||0;o.td+=+V(c,x,'TD')||0});
   c=cat('receiving');c.athletes.forEach(x=>{const o=get(x.athlete.id,x.athlete);o.rec=+V(c,x,'REC')||0;o.inC=1;o.cy=+V(c,x,'YDS')||0;o.td+=+V(c,x,'TD')||0});
   plays.forEach(p=>(p.participants||[]).forEach(x=>{const id=x.athlete.id;if(R[id]&&R[id][2]==t.team.id)get(id,x.athlete)}));
-  const rows=Object.values(P).filter(o=>SK(o.p)).sort((x,y)=>(RANK[x.p]-RANK[y.p])||((y.py+y.ry+y.cy)-(x.py+x.ry+x.cy)));
+  const fd=fdFor(a,h);const rows=Object.values(P).filter(o=>SK(o.p)&&(!fd||nrm(o.n) in fd)).sort((x,y)=>(RANK[x.p]-RANK[y.p])||((y.py+y.ry+y.cy)-(x.py+x.ry+x.cy)));
   html+='<table class="big" data-k="'+t.team.id+'sk"><thead><tr><th style="width:16%">#</th><th>Player</th><th style="width:13%">Pos</th><th style="width:16%">RUSH<br>YDS</th><th style="width:13%">REC</th><th style="width:16%">REC<br>YDS</th></tr></thead><tbody>'+
    (rows.length?rows.map(o=>'<tr data-id="'+o.id+'" ><td class="bn" data-v="'+(+o.j||0)+'">#'+esc(o.j||'?')+'</td><td class="nm" title="'+esc(o.n)+'">'+esc(o.n.replace(/^\S+\s+/,''))+''+(o.c?'<div class="qp">Pass '+esc(o.c)+' · '+o.py+' yds</div>':'')+'</td><td class="bp" data-v="'+RANK[o.p]+'">'+esc(o.p)+'</td><td class="by" data-v="'+o.ry+'">'+(o.inR?o.ry:'–')+'</td><td class="by" data-v="'+o.rec+'">'+(o.inC?o.rec:'–')+'</td><td class="by" data-v="'+o.cy+'">'+(o.inC?o.cy:'–')+'</td></tr>').join(''):'<tr><td colspan="6" style="text-align:center;color:var(--mut)">No players yet</td></tr>')+'</tbody></table>';
   const seen=rows;
-  html+='<div class="note">'+seen.length+' TD-eligible players</div></div>'}
+  html+='<div class="note">'+seen.length+' TD-eligible players'+(fd?' with FanDuel props':' · FanDuel props unavailable, showing all')+'</div></div>'}
  html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows TD-eligible skill players (QB, RB, FB, WR, TE) who have appeared in this game (box score or play-by-play). '+(state=='post'?'Final.':'Play, score and down update every 5s from ESPN\'s fastest feed; list every 10s.')+' Data: ESPN.</div>';
  const keep=[...app.querySelectorAll('table')].map(t=>{const th=t.querySelector('th[data-sdir]');return th?[t.dataset.k,th.cellIndex,th.dataset.sdir]:null}).filter(Boolean);
  app.innerHTML=html;keep.forEach(([k,ci,dir])=>{const t=app.querySelector('table[data-k="'+k+'"]');if(!t)return;const th=t.rows[0].cells[ci];th.click();if(dir==='desc')th.click()});
