@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>NFL Game Tracker</title>
+<meta name="robots" content="noindex"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><title>NFL Game Tracker</title>
 <style>
 :root{--bg:#0b0f17;--card:#141b27;--line:#253044;--tx:#e6edf6;--mut:#8a97ab;--acc:#3ea6ff;--grn:#3ccf7a;--yel:#ffcf3e}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,Segoe UI,Roboto,sans-serif}
@@ -33,6 +33,7 @@ table.big td{font-size:28px;font-weight:800;padding:16px 8px;color:#fff;text-ali
 @media(max-width:480px){main{padding:8px}.pan{padding:8px;overflow-x:hidden}table.big th,table.big td{padding:12px 3px}table.big td.bn{font-size:34px!important}table.big td.nm{font-size:24px!important}table.big td.bp{font-size:20px!important}table.big td.by{font-size:28px!important}table.big th{font-size:13px}table.big th:nth-child(1){width:20%!important}table.big th:nth-child(3){width:14%!important}table.big th:nth-child(4),table.big th:nth-child(6){width:13%!important}table.big th:nth-child(5){width:12%!important}table.big th:nth-child(1){width:17%!important}table.big th:nth-child(3){width:11%!important}table.big td.bn{font-size:30px!important}table.big td.by{font-size:26px!important}table.big td.bp{font-size:18px!important}.fn{display:none}.sn{display:inline}.bt{font-size:22px}.bl{font-size:28px}.bd{font-size:22px}}
 header select{max-width:110px}@media(max-width:480px){h1{font-size:15px}#upd{display:none}}html,body{overflow-x:hidden}
 .qp{font-size:17px;font-weight:700;color:#7fd1ff;margin-top:2px;white-space:nowrap}
+table.big th{white-space:normal;line-height:1.1}
 </style></head><body>
 <header><button id="back" hidden onclick="go(null)">‹ Games</button><h1>🏈 NFL Game Tracker</h1><span id="upd" style="color:var(--mut);font-size:12px;white-space:nowrap"></span><select id="team" title="Jump to team's game"></select></header>
 <main id="app"><div class="note">Loading…</div></main>
@@ -93,7 +94,7 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
   c=cat('receiving');c.athletes.forEach(x=>{const o=get(x.athlete.id,x.athlete);o.rec=+V(c,x,'REC')||0;o.inC=1;o.cy=+V(c,x,'YDS')||0;o.td+=+V(c,x,'TD')||0});
   plays.forEach(p=>(p.participants||[]).forEach(x=>{const id=x.athlete.id;if(R[id]&&R[id][2]==t.team.id)get(id,x.athlete)}));
   const rows=Object.values(P).filter(o=>SK(o.p)).sort((x,y)=>(RANK[x.p]-RANK[y.p])||((y.py+y.ry+y.cy)-(x.py+x.ry+x.cy)));
-  html+='<table class="big" data-k="'+t.team.id+'sk"><thead><tr><th style="width:16%">#</th><th>Player</th><th style="width:13%">Pos</th><th style="width:16%">Rush<span class="fn"> Yds</span></th><th style="width:13%">Catch</th><th style="width:16%">Rec<span class="fn"> Yds</span></th></tr></thead><tbody>'+
+  html+='<table class="big" data-k="'+t.team.id+'sk"><thead><tr><th style="width:16%">#</th><th>Player</th><th style="width:13%">Pos</th><th style="width:16%">RUSH<br>YDS</th><th style="width:13%">REC</th><th style="width:16%">REC<br>YDS</th></tr></thead><tbody>'+
    (rows.length?rows.map(o=>'<tr data-id="'+o.id+'" class="'+(hot.has(o.id)?'hot':'')+'"><td class="bn" data-v="'+(+o.j||0)+'">#'+esc(o.j||'?')+'</td><td class="nm" title="'+esc(o.n)+'">'+esc(o.n.replace(/^\S+\s+/,''))+''+(o.c?'<div class="qp">Pass '+esc(o.c)+' · '+o.py+' yds</div>':'')+'</td><td class="bp" data-v="'+RANK[o.p]+'">'+esc(o.p)+'</td><td class="by" data-v="'+o.ry+'">'+(o.inR?o.ry:'–')+'</td><td class="by" data-v="'+o.rec+'">'+(o.inC?o.rec:'–')+'</td><td class="by" data-v="'+o.cy+'">'+(o.inC?o.cy:'–')+'</td></tr>').join(''):'<tr><td colspan="6" style="text-align:center;color:var(--mut)">No players yet</td></tr>')+'</tbody></table>';
   const seen=rows;
   html+='<div class="note">'+seen.length+' TD-eligible players · yellow = in the last play</div></div>'}
