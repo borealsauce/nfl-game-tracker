@@ -34,6 +34,8 @@ table.big td{font-size:28px;font-weight:800;padding:16px 8px;color:#fff;text-ali
 header select{max-width:110px}@media(max-width:480px){h1{font-size:15px}#upd{display:none}}html,body{overflow-x:hidden}
 .qp{font-size:17px;font-weight:700;color:#7fd1ff;margin-top:2px;white-space:normal;overflow:visible;text-overflow:clip;max-width:none}table.big td.nm{overflow:visible!important;text-overflow:clip!important}
 table.big th{white-space:normal;line-height:1.1}
+table.big td.bn{overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;letter-spacing:-1px}
+@media(max-width:480px){table.big th:nth-child(1){width:19%!important}table.big td.bn{font-size:26px!important}}
 </style></head><body>
 <header><button id="back" hidden onclick="go(null)">‹ Games</button><h1>🏈 NFL Game Tracker</h1><span id="upd" style="color:var(--mut);font-size:12px;white-space:nowrap"></span><select id="team" title="Jump to team's game"></select></header>
 <main id="app"><div class="note">Loading…</div></main>
