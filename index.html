@@ -31,7 +31,8 @@ th{color:var(--mut);font-size:13px;font-weight:600}tr.hot td{background:rgba(255
 <main id="app"><div class="note">Loading…</div></main>
 <script>
 const B='https://site.api.espn.com/apis/site/v2/sports/football/nfl/',SB=B+'scoreboard',SU=B+'summary?event=';
-const app=document.getElementById('app');let timer,events=[];const W={};
+const app=document.getElementById('app');let timer,events=[];const W={},RP={};const RANK={QB:0,RB:1,FB:2,WR:3,TE:4};
+async function roster(gid,tids){if(RP[gid])return RP[gid];const m={};await Promise.all(tids.map(t=>j(B+'teams/'+t+'/roster').then(r=>(r.athletes||[]).forEach(g=>(g.items||[]).forEach(a=>{m[a.id]=[a.position&&a.position.abbreviation,a.jersey]}))).catch(()=>{})));if(Object.keys(m).length)RP[gid]=m;return m}
 const pt=d=>new Date(d).toLocaleString('en-US',{timeZone:'America/Los_Angeles',weekday:'short',hour:'numeric',minute:'2-digit'})+' PT';
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const params=()=>new URLSearchParams(location.search);
@@ -62,25 +63,27 @@ const who=(n,name,pos)=>'<span class="num">#'+esc(n||'?')+'</span>'+esc(name)+(p
 async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB().catch(()=>{})]);sbE=events.find(e=>e.id==id)}catch(e){app.innerHTML='<div class="note">Could not load game: '+e+'</div>';timer=setTimeout(()=>gameView(id),15000);return}
  if(params().get('game')!==id)return;clearTimeout(timer);
  const comp=d.header.competitions[0],st=comp.status.type,state=st.state,cs=comp.competitors,a=cs.find(x=>x.homeAway=='away'),h=cs.find(x=>x.homeAway=='home');
- const s=(sbE&&sbE.competitions[0].situation)||{};
+ const s=(sbE&&sbE.competitions[0].situation)||{};const R=await roster(id,cs.map(c=>c.team.id));
  // positions + jerseys from play participants; last plays
  const dr=d.drives||{},plays=[].concat(...(dr.previous||[]).map(x=>x.plays||[]),(dr.current&&dr.current.plays)||[]);
- const pos={},jer={};plays.forEach(p=>(p.participants||[]).forEach(x=>{const t=x.athlete;if(t.position)pos[t.id]=t.position.abbreviation;if(t.jersey)jer[t.id]=t.jersey}));
+ const pos={},jer={};plays.forEach(p=>(p.participants||[]).forEach(x=>{const t=x.athlete;if(t.position)pos[t.id]=t.position.abbreviation;if(R[t.id]&&R[t.id][0])pos[t.id]=R[t.id][0];if(t.jersey)jer[t.id]=t.jersey}));
+ for(const k in R)if(R[k][0])pos[k]=R[k][0];
  const recent=plays.filter(p=>(p.participants||[]).length).slice(-3).reverse(),hot=new Set();recent.slice(0,1).forEach(p=>p.participants.forEach(x=>hot.add(x.athlete.id)));
  const tmHTML=t=>'<div class="tm"><img src="'+(t.team.logos?t.team.logos[0].href:t.team.logo)+'" alt=""><div><div style="font-weight:700">'+esc(t.team.abbreviation)+(s.possession==t.team.id&&state=='in'?' <span class="ball">🏈</span>':'')+'</div><div class="s">'+(state=='pre'?'–':esc(t.score))+'</div></div></div>';
  const mid=state=='in'?'<span class="live">● LIVE</span><br><b style="font-size:26px;color:var(--tx)">'+esc(st.shortDetail||st.detail)+'</b>':state=='pre'?'Kickoff<br>'+pt(comp.date):'<b style="font-size:24px;color:var(--tx)">'+esc(st.detail)+'</b>';
  let html='<div class="sb">'+tmHTML(a)+'<div class="mid">'+mid+'</div>'+tmHTML(h)+'</div>';
  if(state=='in'){const posT=cs.find(c=>c.team.id==s.possession);html+='<div class="sit">'+(posT?'🏈 '+esc(posT.team.abbreviation)+' ball · ':'')+(esc(sitTxt(s))||esc(s.downDistanceText||'—'))+(s.isRedZone?' · <span style="color:#ff5a5a">Red zone</span>':'')+'<small>'+esc((s.lastPlay&&s.lastPlay.text)||'')+'</small></div>'}
- if(recent.length){html+='<div class="lp"><b>Last play'+(recent.length>1?'s':'')+' — who was involved</b>';recent.forEach((p,i)=>{html+='<div class="note" style="margin:8px 0 0;'+(i?'':'color:var(--tx);font-size:14px')+'">Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+' · '+esc(p.text)+'</div><div class="chips">'+p.participants.map(x=>'<span class="chip">'+who(x.athlete.jersey,x.athlete.shortName||x.athlete.displayName,x.athlete.position&&x.athlete.position.abbreviation)+'</span>').join('')+'</div>'});html+='</div>'}
- html+='<div class="cols">';
- for(const t of [a,h]){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan"><div style="font-weight:800;font-size:18px">'+esc(t.team.displayName)+'</div>';
+ if(recent.length){html+='<div class="lp"><b>Last play'+(recent.length>1?'s':'')+' — who was involved</b>';recent.forEach((p,i)=>{html+='<div class="note" style="margin:8px 0 0;'+(i?'':'color:var(--tx);font-size:14px')+'">Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+' · '+esc(p.text)+'</div><div class="chips">'+p.participants.map(x=>'<span class="chip">'+who(x.athlete.jersey,x.athlete.shortName||x.athlete.displayName,(R[x.athlete.id]&&R[x.athlete.id][0])||(x.athlete.position&&x.athlete.position.abbreviation))+'</span>').join('')+'</div>'});html+='</div>'}
+ const ballT=state=='in'&&cs.find(c=>c.team.id==s.possession),show=ballT?[ballT]:[a,h];
+ html+='<div class="cols"'+(ballT?' style="grid-template-columns:1fr"':'')+'>';
+ for(const t of show){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan"><div style="font-weight:800;font-size:18px">'+(ballT?'🏈 On offense: ':'')+esc(t.team.displayName)+'</div>';
   if(!b){html+='<div class="note">'+(state=='pre'?'Player stats appear after kickoff.':'No player stats yet.')+'</div></div>';continue}
   const seen=new Set();
   for(const [k,lbl,want] of CATS){const c=b.statistics.find(x=>x.name==k);if(!c||!c.athletes.length)continue;const idx=want.map(w=>c.labels.indexOf(w)).filter(i=>i>=0);
    html+='<h3>'+lbl+'</h3><table data-k="'+t.team.id+k+'"><thead><tr><th>Player</th>'+idx.map(i=>'<th>'+esc(c.labels[i])+'</th>').join('')+'</tr></thead><tbody>'+
-   c.athletes.map(x=>{const A=x.athlete;seen.add(A.id);const jn=A.jersey||jer[A.id];return '<tr class="'+(hot.has(A.id)?'hot':'')+'"><td data-v="'+esc(A.displayName)+'" title="'+esc(A.displayName)+'">'+who(jn,A.displayName,pos[A.id])+'</td>'+idx.map(i=>'<td>'+esc(x.stats[i])+'</td>').join('')+'</tr>'}).join('')+'</tbody></table>'}
+   (['passing','rushing','receiving'].includes(k)?c.athletes.map((x,i)=>[x,i]).sort((p,q)=>((RANK[pos[p[0].athlete.id]]??9)-(RANK[pos[q[0].athlete.id]]??9))||p[1]-q[1]).map(p=>p[0]):c.athletes).map(x=>{const A=x.athlete;seen.add(A.id);const jn=A.jersey||(R[A.id]&&R[A.id][1])||jer[A.id];return '<tr class="'+(hot.has(A.id)?'hot':'')+'"><td data-v="'+esc(A.displayName)+'" title="'+esc(A.displayName)+'">'+who(jn,A.displayName,pos[A.id])+'</td>'+idx.map(i=>'<td>'+esc(x.stats[i])+'</td>').join('')+'</tr>'}).join('')+'</tbody></table>'}
   html+='<div class="note">'+seen.size+' players with stats</div></div>'}
- html+='</div><div class="note">Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows every player who has recorded a stat in this game, plus the players named in the last plays (highlighted in yellow). '+(state=='post'?'Final.':'Refreshes every 15s.')+' Data: ESPN.</div>';
+ html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows every player who has recorded a stat in this game, plus the players named in the last plays (highlighted in yellow). '+(state=='post'?'Final.':'Refreshes every 15s.')+' Data: ESPN.</div>';
  const keep=[...app.querySelectorAll('table')].map(t=>{const th=t.querySelector('th[data-sdir]');return th?[t.dataset.k,th.cellIndex,th.dataset.sdir]:null}).filter(Boolean);
  app.innerHTML=html;keep.forEach(([k,ci,dir])=>{const t=app.querySelector('table[data-k="'+k+'"]');if(!t)return;const th=t.rows[0].cells[ci];th.click();if(dir==='desc')th.click()});
  addRz();upd();if(state!='post')timer=setTimeout(()=>gameView(id),15000)}
