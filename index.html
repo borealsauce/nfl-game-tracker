@@ -64,7 +64,8 @@ const who=(n,name,pos)=>'<span class="num">#'+esc(n||'?')+'</span>'+esc(name)+(p
 async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB().catch(()=>{})]);sbE=events.find(e=>e.id==id)}catch(e){app.innerHTML='<div class="note">Could not load game: '+e+'</div>';timer=setTimeout(()=>gameView(id),15000);return}
  if(params().get('game')!==id)return;clearTimeout(timer);
  const comp=d.header.competitions[0],st=comp.status.type,state=st.state,cs=comp.competitors,a=cs.find(x=>x.homeAway=='away'),h=cs.find(x=>x.homeAway=='home');
- const s=(sbE&&sbE.competitions[0].situation)||{};const R=await roster(id,cs.map(c=>c.team.id));
+ const s=(sbE&&sbE.competitions[0].situation)||{};
+ if(state=='in')try{const cx=await j(CORE+id+'/competitions/'+id+'/situation'),ct=cx.team&&(cx.team.$ref.match(/teams\/(\d+)/)||[])[1];if(ct){s.possession=ct;if(cx.downDistanceText)s.downDistanceText=cx.downDistanceText}}catch(e){}const R=await roster(id,cs.map(c=>c.team.id));
  // positions + jerseys from play participants; last plays
  const dr=d.drives||{},plays=[].concat(...(dr.previous||[]).map(x=>x.plays||[]),(dr.current&&dr.current.plays)||[]);
  const pos={},jer={};plays.forEach(p=>(p.participants||[]).forEach(x=>{const t=x.athlete;if(t.position)pos[t.id]=t.position.abbreviation;if(R[t.id]&&R[t.id][0])pos[t.id]=R[t.id][0];if(t.jersey)jer[t.id]=t.jersey}));
