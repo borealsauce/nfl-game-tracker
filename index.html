@@ -45,7 +45,7 @@ async function loadSB(){const d=await j(SB);events=d.events||[];
  const sel=document.getElementById('team'),teams=[];events.forEach(e=>e.competitions[0].competitors.forEach(c=>teams.push([c.team.displayName,e.id])));
  teams.sort((a,b)=>a[0].localeCompare(b[0]));sel.innerHTML='<option value="">Team…</option>'+teams.map(t=>'<option value="'+t[1]+'">'+esc(t[0])+'</option>').join('');
  sel.onchange=()=>sel.value&&go(sel.value)}
-async function route(){clearTimeout(timer);const id=params().get('game');
+async function route(){clearTimeout(timer);clearTimeout(ftimer);const id=params().get('game');
  if(!events.length)try{await loadSB()}catch(e){app.innerHTML='<div class="note">Could not load scoreboard: '+e+'</div>';timer=setTimeout(route,15000);return}
  document.getElementById('back').hidden=!id;id?gameView(id):listView()}
 function sitTxt(s,c){if(!s||s.down==null||s.down<1)return '';const o=['','1st','2nd','3rd','4th'][s.down]||s.down+'th';return o+' & '+(s.isRedZone&&s.distance>=100-s.yardLine?'Goal':s.distance)+(s.possessionText?' at '+s.possessionText:'')}
@@ -73,10 +73,11 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
  const mid=state=='in'?'<span class="live">● LIVE</span><br><b style="font-size:26px;color:var(--tx)">'+esc(st.shortDetail||st.detail)+'</b>':state=='pre'?'Kickoff<br>'+pt(comp.date):'<b style="font-size:24px;color:var(--tx)">'+esc(st.detail)+'</b>';
  let html='<div class="sb">'+tmHTML(a)+'<div class="mid">'+mid+'</div>'+tmHTML(h)+'</div>';
  if(state=='in'){const posT=cs.find(c=>c.team.id==s.possession);html+='<div class="sit">'+(posT?'🏈 '+esc(posT.team.abbreviation)+' ball · ':'')+(esc(sitTxt(s))||esc(s.downDistanceText||'—'))+(s.isRedZone?' · <span style="color:#ff5a5a">Red zone</span>':'')+'<small>'+esc((s.lastPlay&&s.lastPlay.text)||'')+'</small></div>'}
+ html+='<div class="lp" id="fast" hidden></div>';
  if(recent.length){html+='<div class="lp"><b>Last play'+(recent.length>1?'s':'')+' — who was involved</b>';recent.forEach((p,i)=>{html+='<div class="note" style="margin:8px 0 0;'+(i?'':'color:var(--tx);font-size:14px')+'">Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+' · '+esc(p.text)+'</div><div class="chips">'+p.participants.filter((x,i,A)=>A.findIndex(y=>y.athlete.id==x.athlete.id)==i&&SK(pos[x.athlete.id])).map(x=>'<span class="chip">'+who(x.athlete.jersey,x.athlete.shortName||x.athlete.displayName,(R[x.athlete.id]&&R[x.athlete.id][0])||(x.athlete.position&&x.athlete.position.abbreviation))+'</span>').join('')+'</div>'});html+='</div>'}
  const ballT=state=='in'&&cs.find(c=>c.team.id==s.possession),show=ballT?[ballT]:[a,h];
  html+='<div class="cols"'+(ballT?' style="grid-template-columns:1fr"':'')+'>';
- for(const t of show){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan"><div style="font-weight:800;font-size:18px">'+(ballT?'🏈 On offense: ':'')+esc(t.team.displayName)+'</div>';
+ for(const t of show){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan" data-t="'+t.team.id+'"><div style="font-weight:800;font-size:18px">'+(ballT?'🏈 On offense: ':'')+esc(t.team.displayName)+'</div>';
   if(!b){html+='<div class="note">'+(state=='pre'?'Player stats appear after kickoff.':'No player stats yet.')+'</div></div>';continue}
   const P={};const get=(id,A)=>P[id]||(P[id]={id,n:(A&&A.displayName)||(R[id]&&R[id][3])||'',j:(A&&A.jersey)||(R[id]&&R[id][1])||jer[id]||'',p:pos[id],c:'',py:0,car:0,ry:0,rec:0,cy:0,td:0});
   const cat=k=>(b.statistics.find(x=>x.name==k)||{labels:[],athletes:[]}),V=(c,x,l)=>x.stats[c.labels.indexOf(l)];
@@ -92,7 +93,20 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
  html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows TD-eligible skill players (QB, RB, FB, WR, TE) who have a stat or appear in the play-by-play, plus the players named in the last plays (highlighted in yellow). '+(state=='post'?'Final.':'Refreshes every 15s.')+' Data: ESPN.</div>';
  const keep=[...app.querySelectorAll('table')].map(t=>{const th=t.querySelector('th[data-sdir]');return th?[t.dataset.k,th.cellIndex,th.dataset.sdir]:null}).filter(Boolean);
  app.innerHTML=html;keep.forEach(([k,ci,dir])=>{const t=app.querySelector('table[data-k="'+k+'"]');if(!t)return;const th=t.rows[0].cells[ci];th.click();if(dir==='desc')th.click()});
- addRz();upd();if(state!='post')timer=setTimeout(()=>gameView(id),15000)}
+ addRz();upd();if(state!='post')timer=setTimeout(()=>gameView(id),10000);if(state=='in'){fLast[id]=null;fastLoop(id,R,cs)}}
+
+const CORE='https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/events/';let ftimer,fLast={};
+const hs=u=>u.replace(/^http:/,'https:');
+async function fastLoop(id,R,cs){clearTimeout(ftimer);if(params().get('game')!==id)return;
+ try{const s=await j(CORE+id+'/competitions/'+id+'/situation');const ref=s.lastPlay&&s.lastPlay.$ref,pid=ref&&(ref.match(/plays\/(\d+)/)||[])[1];
+  const tid=s.team&&(s.team.$ref.match(/teams\/(\d+)/)||[])[1];
+  if(pid&&fLast[id]!==pid){fLast[id]=pid;const p=await j(hs(ref).split('?')[0]);
+   const el=document.getElementById('fast');if(el){const T=cs.find(c=>c.team.id==tid);
+    const ppl=(p.participants||[]).map(x=>(x.athlete&&x.athlete.$ref.match(/athletes\/(\d+)/)||[])[1]).filter((v,i,A)=>v&&A.indexOf(v)==i&&R[v]&&SK(R[v][0]));
+    el.innerHTML='<b style="color:var(--yel)">⚡ Latest (fast feed)</b> · '+esc(cs.find(c=>c.homeAway=='away').team.abbreviation)+' '+p.awayScore+' – '+p.homeScore+' '+esc(cs.find(c=>c.homeAway=='home').team.abbreviation)+' · Q'+esc(p.period&&p.period.number)+' '+esc(p.clock&&p.clock.displayValue)+'<div style="font-size:20px;font-weight:700;margin-top:4px">'+(T?'🏈 '+esc(T.team.abbreviation)+' ball · ':'')+esc(s.downDistanceText||'')+'</div><div class="note" style="color:var(--tx);font-size:14px">'+esc(p.text)+'</div>'+(ppl.length?'<div class="chips">'+ppl.map(v=>'<span class="chip">'+who(R[v][1],R[v][3],R[v][0])+'</span>').join('')+'</div>':'');
+    el.hidden=false;
+    const cur=(document.querySelector('.pan')||{}).dataset;if(tid&&cur&&cur.t&&cur.t!=tid){fLast[id]=null;return gameView(id)}}}}catch(e){}
+ ftimer=setTimeout(()=>fastLoop(id,R,cs),5000)}
 function addRz(){app.querySelectorAll('table').forEach(t=>{[...t.rows[0].cells].forEach((th,i)=>{const key=t.dataset.k+':'+i;if(W[key])th.style.width=W[key]+'px';const r=document.createElement('span');r.className='rz';th.appendChild(r);
  r.addEventListener('click',e=>e.stopPropagation());r.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const x0=e.clientX,w0=th.offsetWidth;r.setPointerCapture(e.pointerId);
  const mv=ev=>{const w=Math.max(40,w0+ev.clientX-x0);th.style.width=w+'px';W[key]=w};r.addEventListener('pointermove',mv);r.addEventListener('pointerup',()=>r.removeEventListener('pointermove',mv),{once:true})})})})}
