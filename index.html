@@ -97,10 +97,10 @@ async function gameView(id){let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB
   plays.forEach(p=>(p.participants||[]).forEach(x=>{const id=x.athlete.id;if(R[id]&&R[id][2]==t.team.id)get(id,x.athlete)}));
   const rows=Object.values(P).filter(o=>SK(o.p)).sort((x,y)=>(RANK[x.p]-RANK[y.p])||((y.py+y.ry+y.cy)-(x.py+x.ry+x.cy)));
   html+='<table class="big" data-k="'+t.team.id+'sk"><thead><tr><th style="width:16%">#</th><th>Player</th><th style="width:13%">Pos</th><th style="width:16%">RUSH<br>YDS</th><th style="width:13%">REC</th><th style="width:16%">REC<br>YDS</th></tr></thead><tbody>'+
-   (rows.length?rows.map(o=>'<tr data-id="'+o.id+'" class="'+(hot.has(o.id)?'hot':'')+'"><td class="bn" data-v="'+(+o.j||0)+'">#'+esc(o.j||'?')+'</td><td class="nm" title="'+esc(o.n)+'">'+esc(o.n.replace(/^\S+\s+/,''))+''+(o.c?'<div class="qp">Pass '+esc(o.c)+' · '+o.py+' yds</div>':'')+'</td><td class="bp" data-v="'+RANK[o.p]+'">'+esc(o.p)+'</td><td class="by" data-v="'+o.ry+'">'+(o.inR?o.ry:'–')+'</td><td class="by" data-v="'+o.rec+'">'+(o.inC?o.rec:'–')+'</td><td class="by" data-v="'+o.cy+'">'+(o.inC?o.cy:'–')+'</td></tr>').join(''):'<tr><td colspan="6" style="text-align:center;color:var(--mut)">No players yet</td></tr>')+'</tbody></table>';
+   (rows.length?rows.map(o=>'<tr data-id="'+o.id+'" ><td class="bn" data-v="'+(+o.j||0)+'">#'+esc(o.j||'?')+'</td><td class="nm" title="'+esc(o.n)+'">'+esc(o.n.replace(/^\S+\s+/,''))+''+(o.c?'<div class="qp">Pass '+esc(o.c)+' · '+o.py+' yds</div>':'')+'</td><td class="bp" data-v="'+RANK[o.p]+'">'+esc(o.p)+'</td><td class="by" data-v="'+o.ry+'">'+(o.inR?o.ry:'–')+'</td><td class="by" data-v="'+o.rec+'">'+(o.inC?o.rec:'–')+'</td><td class="by" data-v="'+o.cy+'">'+(o.inC?o.cy:'–')+'</td></tr>').join(''):'<tr><td colspan="6" style="text-align:center;color:var(--mut)">No players yet</td></tr>')+'</tbody></table>';
   const seen=rows;
-  html+='<div class="note">'+seen.length+' TD-eligible players · yellow = in the last play</div></div>'}
- html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows TD-eligible skill players (QB, RB, FB, WR, TE) who have appeared in this game (box score or play-by-play); yellow = in the last play. '+(state=='post'?'Final.':'Play, score and down update every 5s from ESPN\'s fastest feed; list every 10s.')+' Data: ESPN.</div>';
+  html+='<div class="note">'+seen.length+' TD-eligible players</div></div>'}
+ html+='</div><div class="note">'+(ballT?'In-game view shows only the team with the ball; it switches automatically on possession change. ':'')+'Who\'s in: ESPN\'s free data does not publish the 11 players on the field. This shows TD-eligible skill players (QB, RB, FB, WR, TE) who have appeared in this game (box score or play-by-play). '+(state=='post'?'Final.':'Play, score and down update every 5s from ESPN\'s fastest feed; list every 10s.')+' Data: ESPN.</div>';
  const keep=[...app.querySelectorAll('table')].map(t=>{const th=t.querySelector('th[data-sdir]');return th?[t.dataset.k,th.cellIndex,th.dataset.sdir]:null}).filter(Boolean);
  app.innerHTML=html;keep.forEach(([k,ci,dir])=>{const t=app.querySelector('table[data-k="'+k+'"]');if(!t)return;const th=t.rows[0].cells[ci];th.click();if(dir==='desc')th.click()});
  addRz();upd();if(state!='post')timer=setTimeout(()=>gameView(id),10000);if(state=='in'){fLast[id]=null;fastLoop(id,R,cs)}}
@@ -114,7 +114,7 @@ async function fastLoop(id,R,cs){clearTimeout(ftimer);if(params().get('game')!==
 
    const sc=document.querySelectorAll('.sb .tm .s');if(sc.length==2&&p.awayScore!=null){sc[0].textContent=p.awayScore;sc[1].textContent=p.homeScore}
    const ppl=new Set((p.participants||[]).map(x=>(x.athlete&&x.athlete.$ref.match(/athletes\/(\d+)/)||[])[1]));
-   if(ppl.size)document.querySelectorAll('table.big tr[data-id]').forEach(r=>r.classList.toggle('hot',ppl.has(r.dataset.id)));
+   if(ppl.size)document.querySelectorAll('table.big tr[data-id]').forEach(r=>0);
    {
     const cur=(document.querySelector('.pan')||{}).dataset;if(tid&&cur&&cur.t&&cur.t!=tid){fLast[id]=null;return gameView(id)}}}}catch(e){}
  ftimer=setTimeout(()=>fastLoop(id,R,cs),5000)}
