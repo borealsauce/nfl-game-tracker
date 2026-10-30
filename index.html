@@ -73,6 +73,7 @@ const who=(n,name,pos)=>'<span class="num">#'+esc(n||'?')+'</span>'+esc(name)+(p
 let FD=null,FDt=0;const nrm=x=>(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(jr|sr|ii|iii|iv)\b/g,'').replace(/[^a-z]/g,'');
 async function loadFD(){if(FD&&Date.now()-FDt<60000)return;try{FD=(await j('fanduel.json')).games||{};FDt=Date.now()}catch(_){if(!FD)FD={}}}
 function fdFor(a,h){if(!FD)return null;const k=Object.keys(FD).find(k=>{const[x,y]=k.split(' @ ');return x.endsWith(a.team.name)&&y.endsWith(h.team.name)});const g=k&&FD[k];if(!g||!Object.keys(g).length)return null;const m={};for(const n in g)m[nrm(n)]=1;return m}
+function setMan(el,id,t){window.MAN=window.MAN||{};if(t)window.MAN[id]=t;else delete window.MAN[id];el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));clearTimeout(timer);clearTimeout(ftimer);fLast[id]=null;gameView(id)}
 async function gameView(id){if(document.hidden)return;let d,sbE;try{[d]=await Promise.all([j(SU+id),loadSB().catch(()=>{})]);sbE=events.find(e=>e.id==id)}catch(e){app.innerHTML='<div class="note">Could not load game: '+e+'</div>';timer=setTimeout(()=>gameView(id),15000);return}
  await loadFD();if(params().get('game')!==id)return;clearTimeout(timer);
  const comp=d.header.competitions[0],st=comp.status.type,state=st.state,cs=comp.competitors,a=cs.find(x=>x.homeAway=='away'),h=cs.find(x=>x.homeAway=='home');
@@ -88,7 +89,7 @@ async function gameView(id){if(document.hidden)return;let d,sbE;try{[d]=await Pr
  let html='<div class="sb">'+tmHTML(a)+'<div class="mid">'+mid+'</div>'+tmHTML(h)+'</div>';
  if(state=='in'){const S0=window._cx?coreS(window._cx):(s.possession?{tid:s.possession,yardLine:s.yardLine,down:s.down,dist:s.distance,dd:s.downDistanceText}:null);html+='<div id="ball">'+ballHTML(id,cs,S0)+'</div>'}
  const pid0=(window.MAN||{})[id]||s.possession||(LK[id]&&LK[id].tid)||(window._cx&&coreS(window._cx).tid)||h.team.id,ballT=cs.find(c=>c.team.id==pid0)||h,show=[ballT];
- html+='<div class="tog">'+cs.map(c=>'<button class="'+(c===ballT?'on':'')+'" onclick="(window.MAN=window.MAN||{})[\''+id+'\']=\''+c.team.id+'\';gameView(\''+id+'\')">'+esc(c.team.abbreviation)+'</button>').join('')+((window.MAN||{})[id]?'<button onclick="delete window.MAN[\''+id+'\'];gameView(\''+id+'\')">Auto</button>':'')+'</div>';
+ const man=(window.MAN||{})[id];html+='<div class="tog">'+cs.map(c=>'<button class="'+(man&&c===ballT?'on':'')+'" onclick="setMan(this,\''+id+'\',\''+c.team.id+'\')">'+esc(c.team.abbreviation)+'</button>').join('')+'<button class="'+(man?'':'on')+'" onclick="setMan(this,\''+id+'\',null)">Auto</button></div>';
  html+='<div class="cols"'+(ballT?' style="grid-template-columns:1fr"':'')+'>';
  for(const t of show){const b=(d.boxscore.players||[]).find(x=>x.team.id==t.team.id);html+='<div class="pan" data-t="'+t.team.id+'"><div style="font-weight:800;font-size:18px">'+(state=='in'&&!(window.MAN||{})[id]?'🏈 On offense: ':'')+esc(t.team.displayName)+'</div>';
   if(!b){html+='<div class="note">'+(state=='pre'?'Player stats appear after kickoff.':'No player stats yet.')+'</div></div>';continue}
